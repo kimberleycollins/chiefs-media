@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-API_KEY = st.secrets["403ed40c75cd146c59aeaef391538f4e"]
+API_KEY = st.secrets["GNEWS_API_KEY"]
 
 # --- CONFIG ---
 API_KEY = 'YOUR_GNEWS_API_KEY'  # Replace this with your actual key
