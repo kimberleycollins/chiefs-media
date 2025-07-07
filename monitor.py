@@ -2,10 +2,8 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-API_KEY = st.secrets["GNEWS_API_KEY"]
-
 # --- CONFIG ---
-API_KEY = 'YOUR_GNEWS_API_KEY'  # Replace this with your actual key
+API_KEY = '403ed40c75cd146c59aeaef391538f4e'  # Replace this with your actual key
 BASE_URL = 'https://gnews.io/api/v4/search'
 
 # --- SIDEBAR ---
@@ -25,7 +23,7 @@ def fetch_articles(query, lang, max_articles):
         'lang': lang,
         'max': max_articles
     }
-    response = requests.get('https://gnews.io/api/v4/search', params=params)
+    response = requests.get(BASE_URL, params=params)
     if response.status_code == 200:
         return response.json().get("articles", [])
     else:
@@ -43,4 +41,3 @@ if articles:
         st.markdown("---")
 else:
     st.info("No articles found.")
-
