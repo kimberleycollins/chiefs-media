@@ -1,64 +1,58 @@
 import streamlit as st
-import feedparser
-from datetime import datetime
-import pandas as pd
+import requests
+from datetime import datetime, date
+
+# --- CONFIG ---
+API_KEY = '403ed40c75cd146c59aeaef391538f4e'
+BASE_URL = 'https://gnews.io/api/v4/search'
 
 # --- SIDEBAR ---
-st.sidebar.title("📰 Google News Monitor")
-query_input = st.sidebar.text_input(
-    "Enter search terms",
-    '"Gallagher Chiefs" OR "Chiefs Rugby Club"'
-)
-sort_by = st.sidebar.selectbox(
-    "Sort by",
-    ["Date (Newest First)", "Date (Oldest First)", "Outlet (A-Z)", "Outlet (Z-A)"]
-)
+st.sidebar.title("📰 Media Monitoring Tool")
 
-# --- BUILD GOOGLE NEWS RSS URL ---
-rss_url = f"https://news.google.com/rss/search?q={query_input.replace(' ', '+')}&hl=en-NZ&gl=NZ&ceid=NZ:en"
+query_input = st.sidebar.text_input("Enter search text (e.g. Gallagher Chiefs)", "Gallagher Chiefs")
+exact_phrase = st.sidebar.checkbox("Search as exact phrase", value=True)
 
-# --- MAIN PAGE ---
-st.title("📡 Google News Feed Monitor")
-st.markdown(f"### Results for: `{query_input}`")
-st.markdown(f"🔗 [View directly in Google News]({rss_url.replace('/rss/', '/search/')})")
+lang = st.sidebar.selectbox("Language", ["en", "es", "fr", "de", "zh"])
+max_articles = st.sidebar.slider("Number of articles to fetch", 5, 30, 10)
 
-# --- FETCH & PARSE FEED ---
-feed = feedparser.parse(rss_url)
+start_date = st.sidebar.date_input("Start date", date.today())
+end_date = st.sidebar.date_input("End date", date.today())
 
-# --- CONVERT TO DATAFRAME ---
-articles = []
-for entry in feed.entries:
-    published = datetime(*entry.published_parsed[:6]) if entry.get("published_parsed") else None
-    source = entry.source.title if "source" in entry else "Unknown"
-    articles.append({
-        "title": entry.title,
-        "summary": entry.summary,
-        "link": entry.link,
-        "published": published,
-        "source": source
-    })
+# Format query
+query = f'"{query_input}"' if exact_phrase else query_input
 
-df = pd.DataFrame(articles)
+# --- MAIN ---
+st.title("📡 Real-Time News Monitor")
+st.markdown(f"### Searching for: `{query}`")
+st.markdown(f"**Date range:** {start_date} to {end_date}")
 
-# --- SORT ---
-if sort_by == "Date (Newest First)":
-    df = df.sort_values(by="published", ascending=False)
-elif sort_by == "Date (Oldest First)":
-    df = df.sort_values(by="published", ascending=True)
-elif sort_by == "Outlet (A-Z)":
-    df = df.sort_values(by="source", ascending=True)
-elif sort_by == "Outlet (Z-A)":
-    df = df.sort_values(by="source", ascending=False)
+def fetch_articles(query, lang, max_articles, from_date, to_date):
+    params = {
+        'q': query,
+        'token': API_KEY,
+        'lang': lang,
+        'max': max_articles,
+        'from': from_date.isoformat(),
+        'to': to_date.isoformat(),
+        'sortBy': 'publishedAt'
+    }
+    response = requests.get(BASE_URL, params=params)
+    if response.status_code == 200:
+        return response.json().get("articles", [])
+    else:
+        st.error(f"API Error: {response.status_code} — {response.text}")
+        return []
+
+articles = fetch_articles(query, lang, max_articles, start_date, end_date)
 
 # --- DISPLAY ---
-if not df.empty:
-    for _, row in df.iterrows():
-        st.subheader(row["title"])
-        if row["published"]:
-            st.write(f"*Published: {row['published'].strftime('%d %b %Y, %I:%M %p')}*")
-        st.write(f"*Source: {row['source']}*")
-        st.write(row["summary"], unsafe_allow_html=True)
-        st.markdown(f"[Read more]({row['link']})")
+if articles:
+    for article in articles:
+        st.subheader(article['title'])
+        pub_time = datetime.fromisoformat(article['publishedAt'].replace('Z', '+00:00')).strftime('%d %b %Y, %I:%M %p')
+        st.write(f"*Source: {article['source']['name']}*  —  *Published: {pub_time}*")
+        st.write(article['description'])
+        st.markdown(f"[Read more]({article['url']})")
         st.markdown("---")
 else:
     st.info("No articles found.")
