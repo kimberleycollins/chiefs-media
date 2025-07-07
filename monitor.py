@@ -25,8 +25,8 @@ def fetch_articles(query, lang, max_articles):
         'lang': lang,
         'max': max_articles
     }
-response = requests.get('https://gnews.io/api/v4/search', params=params)
-if response.status_code == 200:
+    response = requests.get('https://gnews.io/api/v4/search', params=params)
+    if response.status_code == 200:
         return response.json().get("articles", [])
     else:
         st.error(f"API Error: {response.status_code}")
